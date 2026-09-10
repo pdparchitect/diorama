@@ -1,0 +1,129 @@
+import Foundation
+
+/// Decides, for every pointer event, where the cursor is allowed to be.
+///
+/// The fence has two jobs. While the pointer is **free** it keeps the cursor off the virtual display, so the pointer can never
+/// wander onto a screen nobody can see. While the pointer is **captured** it lives on the virtual display, and the fence keeps
+/// a *shadow* — the position the person believes the pointer has on their physical screen, inside the stage. Every movement
+/// updates the shadow and the cursor is placed at the matching point on the virtual display, so the picture in the stage
+/// follows the hand exactly. Leaving the stage, or pushing against the edge of the virtual display, releases the pointer and
+/// puts it back on the physical screen where the shadow is.
+///
+/// The fence is pure state: the caller feeds it event locations and applies the returned decision (rewrite the event location,
+/// warp the cursor, react to a transition). This keeps the policy testable without a window server.
+public struct CursorFence: Sendable, Equatable {
+    public enum Mode: Sendable, Equatable {
+        case free
+        /// `shadow` is in stage (physical screen) coordinates, `target` is where the cursor was last placed on the display.
+        case captured(shadow: CGPoint, target: CGPoint)
+    }
+
+    public enum Transition: Sendable, Equatable {
+        case entered
+        case exited
+    }
+
+    public struct Decision: Sendable, Equatable {
+        /// New location for the event, or `nil` to leave the event untouched.
+        public var location: CGPoint?
+        /// Where the cursor should be warped, or `nil` for no warp.
+        public var warp: CGPoint?
+        public var transition: Transition?
+
+        public init(location: CGPoint? = nil, warp: CGPoint? = nil, transition: Transition? = nil) {
+            self.location = location
+            self.warp = warp
+            self.transition = transition
+        }
+
+        public static let passthrough = Decision()
+    }
+
+    public private(set) var mode: Mode = .free
+    /// When false the stage is view-only: the pointer is never captured, but the virtual display stays fenced off.
+    public var interactive = true
+    /// Stage and display rectangles; `nil` while the stage is not visible or no display exists.
+    public var geometry: StageGeometry?
+    /// Bounds of the virtual display; `nil` while no display exists.
+    public var virtualBounds: CGRect?
+    /// Bounds of every display the cursor may rest on.
+    public var physicalBounds: [CGRect] = []
+    /// Set after a release; the pointer must be seen outside the stage before it can be captured again, so a release at the
+    /// stage edge does not immediately re-capture.
+    public private(set) var armed = true
+
+    public init() {}
+
+    public var isCaptured: Bool {
+        if case .captured = mode { return true }
+        return false
+    }
+
+    /// Processes one pointer event.
+    /// - Parameters:
+    ///   - location: the event location in global coordinates.
+    ///   - rawDelta: the hardware movement reported by the event; only its direction is used, to detect pushing against an edge.
+    ///   - stageHit: whether the stage window is the topmost window at a point on the physical screen.
+    public mutating func process(location: CGPoint, rawDelta: CGVector, stageHit: (CGPoint) -> Bool) -> Decision {
+        switch mode {
+        case .free:
+            return processFree(location: location, stageHit: stageHit)
+        case .captured(let shadow, let target):
+            return processCaptured(location: location, rawDelta: rawDelta, shadow: shadow, target: target, stageHit: stageHit)
+        }
+    }
+
+    /// Forces the pointer back onto the physical screen, for example when interaction is switched off or the stage window closes.
+    public mutating func release() -> Decision? {
+        guard case .captured(let shadow, _) = mode else { return nil }
+        mode = .free
+        armed = false
+        let point = Clamp.point(shadow, intoAnyOf: physicalBounds)
+        return Decision(location: point, warp: point, transition: .exited)
+    }
+
+    private mutating func processFree(location: CGPoint, stageHit: (CGPoint) -> Bool) -> Decision {
+        if let virtualBounds, virtualBounds.contains(location), !physicalBounds.isEmpty {
+            let clamped = Clamp.point(location, intoAnyOf: physicalBounds)
+            return Decision(location: clamped, warp: clamped)
+        }
+        guard let geometry, geometry.stage.contains(location) else {
+            armed = true
+            return .passthrough
+        }
+        guard interactive, armed, stageHit(location) else { return .passthrough }
+        let target = geometry.toDisplay(location)
+        mode = .captured(shadow: location, target: target)
+        return Decision(location: target, warp: target, transition: .entered)
+    }
+
+    private mutating func processCaptured(location: CGPoint, rawDelta: CGVector, shadow: CGPoint, target: CGPoint, stageHit: (CGPoint) -> Bool) -> Decision {
+        // The cursor was placed at `target`; whatever offset it has now is the hardware movement since then.
+        var shadow = CGPoint(x: shadow.x + (location.x - target.x), y: shadow.y + (location.y - target.y))
+        var push = CGVector.zero
+        if let geometry {
+            let display = geometry.display
+            if location.x <= display.minX, rawDelta.dx < 0 { push.dx = -1 }
+            if location.x >= display.maxX - 1, rawDelta.dx > 0 { push.dx = 1 }
+            if location.y <= display.minY, rawDelta.dy < 0 { push.dy = -1 }
+            if location.y >= display.maxY - 1, rawDelta.dy > 0 { push.dy = 1 }
+        }
+        let pushing = push != .zero
+        if interactive, !pushing, let geometry, geometry.stage.contains(shadow), stageHit(shadow) {
+            let newTarget = geometry.toDisplay(shadow)
+            mode = .captured(shadow: shadow, target: newTarget)
+            return Decision(location: newTarget, warp: newTarget)
+        }
+        if pushing, let geometry {
+            // Step just outside the stage in the direction of the push so the pointer reappears beside the picture.
+            if push.dx < 0 { shadow.x = geometry.stage.minX - 1 }
+            if push.dx > 0 { shadow.x = geometry.stage.maxX + 1 }
+            if push.dy < 0 { shadow.y = geometry.stage.minY - 1 }
+            if push.dy > 0 { shadow.y = geometry.stage.maxY + 1 }
+        }
+        mode = .free
+        armed = false
+        let point = Clamp.point(shadow, intoAnyOf: physicalBounds)
+        return Decision(location: point, warp: point, transition: .exited)
+    }
+}
