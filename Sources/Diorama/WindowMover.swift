@@ -13,8 +13,8 @@ enum WindowMover {
     }
 
     /// The focused window of the frontmost application, unless that application is Diorama itself.
-    static func frontWindow() -> Placement? {
-        guard let application = NSWorkspace.shared.frontmostApplication,
+    static func frontWindow(of application: NSRunningApplication) -> Placement? {
+        guard !application.isTerminated,
               application.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return nil }
         let element = AXUIElementCreateApplication(application.processIdentifier)
         AXUIElementSetMessagingTimeout(element, timeout)
@@ -75,18 +75,18 @@ enum WindowMover {
 
     private static func copyElement(_ element: AXUIElement, attribute: String) -> AXUIElement? {
         guard let value = copyAttribute(element, attribute: attribute), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return unsafeBitCast(value, to: AXUIElement.self)
+        return unsafeDowncast(value, to: AXUIElement.self)
     }
 
     private static func copyElements(_ element: AXUIElement, attribute: String) -> [AXUIElement] {
         guard let array = copyAttribute(element, attribute: attribute) as? [AnyObject] else { return [] }
         return array.compactMap { item in
-            CFGetTypeID(item) == AXUIElementGetTypeID() ? unsafeBitCast(item, to: AXUIElement.self) : nil
+            CFGetTypeID(item) == AXUIElementGetTypeID() ? unsafeDowncast(item, to: AXUIElement.self) : nil
         }
     }
 
     private static func copyValue(_ element: AXUIElement, attribute: String) -> AXValue? {
         guard let value = copyAttribute(element, attribute: attribute), CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
-        return unsafeBitCast(value, to: AXValue.self)
+        return unsafeDowncast(value, to: AXValue.self)
     }
 }

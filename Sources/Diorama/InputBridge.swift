@@ -53,6 +53,10 @@ final class InputBridge: @unchecked Sendable {
     }
 
     func update(geometry: StageGeometry?, virtualBounds: CGRect?, physicalBounds: [CGRect], interactive: Bool) {
+        let geometryChanged = fence.geometry != geometry || fence.virtualBounds != virtualBounds
+        // Release using the old mapping when a display or the stage moves underneath the cursor.
+        fence.physicalBounds = physicalBounds
+        if fence.isCaptured, geometryChanged || !interactive { releaseCapture() }
         fence.geometry = geometry
         fence.virtualBounds = virtualBounds
         fence.physicalBounds = physicalBounds
@@ -75,10 +79,16 @@ final class InputBridge: @unchecked Sendable {
             guard let hotkey = Hotkey.match(keyCode: event.getIntegerValueField(.keyboardEventKeycode), flags: event.flags) else {
                 return Unmanaged.passUnretained(event)
             }
-            MainActor.assumeIsolated { onHotkey?(hotkey) }
+            // AX calls can take seconds across several windows. Never run those inside the tap callback.
+            if event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
+                DispatchQueue.main.async { [weak self] in
+                    MainActor.assumeIsolated { self?.onHotkey?(hotkey) }
+                }
+            }
             return nil
         default:
-            let delta = CGVector(dx: event.getDoubleValueField(.mouseEventDeltaX), dy: event.getDoubleValueField(.mouseEventDeltaY))
+            let isMovement = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged].contains(type)
+            let delta = isMovement ? CGVector(dx: event.getDoubleValueField(.mouseEventDeltaX), dy: event.getDoubleValueField(.mouseEventDeltaY)) : .zero
             let decision = fence.process(location: event.location, rawDelta: delta) { point in self.stageIsTopmost(at: point) }
             apply(decision, to: event)
             return Unmanaged.passUnretained(event)
@@ -87,9 +97,13 @@ final class InputBridge: @unchecked Sendable {
 
     private func apply(_ decision: CursorFence.Decision, to event: CGEvent?) {
         if let location = decision.location { event?.location = location }
-        if let warp = decision.warp {
+        // Rewriting a HID-level event's location already moves the cursor there, and every warp makes macOS suppress
+        // hardware pointer events for a moment, which shows as stutter. So the cursor is only warped for the jumps between
+        // displays: capture, release, and keeping a free pointer off the virtual display.
+        let tracking = event != nil && fence.isCaptured && decision.transition == nil
+        if let warp = decision.warp, !tracking {
             _ = CGWarpMouseCursorPosition(warp)
-            // Warping suspends hardware pointer events for a moment; re-associating the cursor lifts that suspension immediately.
+            // Re-associating the cursor lifts the post-warp suspension immediately.
             _ = CGAssociateMouseAndMouseCursorPosition(1)
         }
         if let transition = decision.transition {

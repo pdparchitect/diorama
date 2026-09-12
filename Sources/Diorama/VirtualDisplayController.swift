@@ -28,6 +28,9 @@ final class VirtualDisplayController {
     private static let productID: UInt32 = 0xD10A
     private static let serialNumber: UInt32 = 1
 
+    /// Asks CoreGraphics to include the Retina ("duplicate low resolution") modes, which it hides by default.
+    private static let allModesOptions = [kCGDisplayShowDuplicateLowResolutionModes: kCFBooleanTrue] as CFDictionary
+
     private var display: CGVirtualDisplay?
     private(set) var displayID: CGDirectDisplayID = 0
 
@@ -40,12 +43,14 @@ final class VirtualDisplayController {
         return CGDisplayIsActive(displayID) != 0 ? bounds : .zero
     }
 
+    /// Backing size of the current mode. `CGDisplayPixelsWide` reports points for a Retina virtual display, so the size is
+    /// read from the mode itself.
     var pixelSize: CGSize {
-        guard displayID != 0 else { return .zero }
-        return CGSize(width: CGDisplayPixelsWide(displayID), height: CGDisplayPixelsHigh(displayID))
+        guard displayID != 0, let mode = CGDisplayCopyDisplayMode(displayID) else { return .zero }
+        return CGSize(width: mode.pixelWidth, height: mode.pixelHeight)
     }
 
-    func create() throws {
+    func create(preferred: StageResolution = .default) throws {
         guard display == nil else { return }
         let descriptor = CGVirtualDisplayDescriptor()
         descriptor.setDispatchQueue(.main)
@@ -58,10 +63,14 @@ final class VirtualDisplayController {
         descriptor.vendorID = Self.vendorID
         descriptor.productID = Self.productID
         descriptor.serialNum = Self.serialNumber
-        let display = CGVirtualDisplay(descriptor: descriptor)
+        guard let display = CGVirtualDisplay(descriptor: descriptor) else { throw DioramaError.displayCreation }
         let settings = CGVirtualDisplaySettings()
         settings.hiDPI = 1
-        settings.modes = StageResolution.all.map { CGVirtualDisplayMode(width: UInt32($0.pixelWidth), height: UInt32($0.pixelHeight), refreshRate: 60) }
+        // With hiDPI set, each mode is a size in points; macOS backs it with twice as many pixels while that fits the maximum.
+        // The first mode is the one the display comes up in.
+        settings.modes = ([preferred] + StageResolution.all.filter { $0 != preferred }).map {
+            CGVirtualDisplayMode(width: UInt32($0.pointWidth), height: UInt32($0.pointHeight), refreshRate: 60)
+        }
         guard display.applySettings(settings) else { throw DioramaError.displayCreation }
         self.display = display
         displayID = display.displayID
@@ -81,13 +90,19 @@ final class VirtualDisplayController {
     /// Switches the display to a Retina mode with the given backing size. Returns false when no such mode is available.
     @discardableResult
     func apply(_ resolution: StageResolution) -> Bool {
-        guard displayID != 0, let modes = CGDisplayCopyAllDisplayModes(displayID, nil) as? [CGDisplayMode] else { return false }
+        guard displayID != 0, let modes = CGDisplayCopyAllDisplayModes(displayID, Self.allModesOptions) as? [CGDisplayMode] else { return false }
         guard let mode = modes.first(where: {
-            $0.pixelWidth == resolution.pixelWidth && $0.pixelHeight == resolution.pixelHeight && $0.width == resolution.pointWidth
+            $0.pixelWidth == resolution.pixelWidth && $0.pixelHeight == resolution.pixelHeight && $0.width == resolution.pointWidth && $0.isUsableForDesktopGUI()
         }) else { return false }
+        if let current = CGDisplayCopyDisplayMode(displayID), current.pixelWidth == mode.pixelWidth, current.pixelHeight == mode.pixelHeight, current.width == mode.width {
+            return true
+        }
         var configuration: CGDisplayConfigRef?
         guard CGBeginDisplayConfiguration(&configuration) == .success, let configuration else { return false }
-        CGConfigureDisplayWithDisplayMode(configuration, displayID, mode, nil)
+        guard CGConfigureDisplayWithDisplayMode(configuration, displayID, mode, nil) == .success else {
+            CGCancelDisplayConfiguration(configuration)
+            return false
+        }
         return CGCompleteDisplayConfiguration(configuration, .permanently) == .success
     }
 

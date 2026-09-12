@@ -1,5 +1,5 @@
 SHELL := /bin/zsh
-.PHONY: build run test install icon
+.PHONY: build run test install icon verify
 build:
 	./scripts/build-app.sh
 run:
@@ -10,3 +10,5 @@ install: build
 	./scripts/install-app.sh
 icon:
 	./scripts/make-icon.sh
+verify:
+	./scripts/verify-app.sh ./dist/Diorama.app

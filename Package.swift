@@ -12,6 +12,7 @@ let package = Package(
             dependencies: ["DioramaCore", "CGVirtualDisplayShim"],
             linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("ScreenCaptureKit"), .linkedFramework("ApplicationServices")]
         ),
-        .testTarget(name: "DioramaCoreTests", dependencies: ["DioramaCore"])
+        .testTarget(name: "DioramaCoreTests", dependencies: ["DioramaCore"]),
+        .testTarget(name: "DioramaTests", dependencies: ["Diorama"])
     ]
 )

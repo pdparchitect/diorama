@@ -32,16 +32,27 @@ enum Screenshots {
     }
 
     @discardableResult
-    static func save(_ image: CGImage, date: Date = Date()) throws -> URL {
+    static func save(_ image: CGImage, date: Date = Date(), directory: URL = Screenshots.directory) throws -> URL {
+        let data = try pngData(image)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent(ScreenshotNaming.filename(date: date))
-        try pngData(image).write(to: url, options: .atomic)
-        return url
+        let base = directory.appendingPathComponent(ScreenshotNaming.filename(date: date))
+        var suffix = 1
+        while true {
+            let url = suffix == 1 ? base : base.deletingPathExtension().appendingPathExtension("\(suffix).png")
+            do {
+                // Exclusive creation also protects against another Diorama process saving in the same second.
+                try data.write(to: url, options: .withoutOverwriting)
+                return url
+            } catch CocoaError.fileWriteFileExists {
+                suffix += 1
+            }
+        }
     }
 
     static func copy(_ image: CGImage) throws {
+        let data = try pngData(image)
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setData(try pngData(image), forType: .png)
+        guard pasteboard.setData(data, forType: .png) else { throw DioramaError.message("Cannot write to the clipboard.") }
     }
 }

@@ -11,6 +11,8 @@ final class StageNSView: NSView {
     /// Called with the picture's rectangle in global coordinates (top-left origin) and the window number, or `nil` when the
     /// picture is not visible on screen.
     var onGeometryChange: ((CGRect?, Int) -> Void)?
+    // Retain the buffer as well as the IOSurface until the next frame is installed.
+    private var displayedFrame: StageFrame?
 
     private static let windowNotifications: [Notification.Name] = [
         NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.didChangeScreenNotification,
@@ -32,11 +34,13 @@ final class StageNSView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     func present(_ frame: StageFrame) {
+        displayedFrame = frame
         layer?.contents = frame.surface
     }
 
     func clear() {
         layer?.contents = nil
+        displayedFrame = nil
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
@@ -95,5 +99,11 @@ struct StageView: NSViewRepresentable {
 
     func updateNSView(_ view: StageNSView, context: Context) {
         view.displayPointSize = model.displayPointSize
+    }
+
+    static func dismantleNSView(_ view: StageNSView, coordinator: ()) {
+        view.onGeometryChange?(nil, view.window?.windowNumber ?? 0)
+        view.onGeometryChange = nil
+        view.clear()
     }
 }

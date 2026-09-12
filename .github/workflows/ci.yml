@@ -9,11 +9,13 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Test core
+      - name: Test core and app lifecycle
         run: ./scripts/test.sh
       - name: Build and verify app
         run: ./scripts/build-app.sh
+      - name: Archive app with executable permissions
+        run: ditto -c -k --keepParent dist/Diorama.app dist/Diorama-macOS.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Diorama-macOS
-          path: dist/Diorama.app
+          path: dist/Diorama-macOS.zip
