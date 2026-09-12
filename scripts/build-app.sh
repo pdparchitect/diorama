@@ -2,6 +2,19 @@
 set -euo pipefail
 project_root="${0:A:h:h}"
 configuration="${DIORAMA_BUILD_CONFIGURATION:-release}"
+# Keep local builds tied to one certificate; changing an ad-hoc CDHash breaks TCC grants.
+identity="${DIORAMA_SIGNING_IDENTITY:-$(git -C "$project_root" config --local --get diorama.signingIdentity 2>/dev/null || true)}"
+if [[ -z "$identity" ]]; then
+  print -u2 -- 'Choose a persistent signing identity before building Diorama:'
+  print -u2 -- '  security find-identity -v -p codesigning'
+  print -u2 -- '  git config --local diorama.signingIdentity CERTIFICATE_SHA1'
+  print -u2 -- 'For disposable CI builds only, explicitly set DIORAMA_SIGNING_IDENTITY=-.'
+  exit 1
+fi
+if [[ "$identity" == - && "${DIORAMA_SIGNING_IDENTITY:-}" != - ]]; then
+  print -u2 -- 'Ad-hoc signing requires an explicit DIORAMA_SIGNING_IDENTITY=- override.'
+  exit 1
+fi
 export CLANG_MODULE_CACHE_PATH="$project_root/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 mkdir -p "$CLANG_MODULE_CACHE_PATH"
@@ -29,7 +42,6 @@ for index, line in enumerate(lines):
 PY
 cp "$project_root/Support/Info.plist" "$app/Contents/Info.plist"
 cp "$project_root/Support/Diorama.icns" "$app/Contents/Resources/Diorama.icns"
-identity="${DIORAMA_SIGNING_IDENTITY:--}"
 codesign --force --options runtime --timestamp=none --sign "$identity" "$app"
 "$project_root/scripts/verify-app.sh" "$app" >&2
 rm -rf "$output"

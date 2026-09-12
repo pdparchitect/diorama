@@ -29,6 +29,15 @@ The display offers Retina resolutions from 1024 × 576 to 1920 × 1080 points (2
 
 macOS 15 or newer, with Xcode Command Line Tools supporting Swift 6. There are no third-party dependencies.
 
+Choose an installed code-signing certificate once for this checkout. Copy its SHA-1 identifier from the first command into the second:
+
+```sh
+security find-identity -v -p codesigning
+git config --local diorama.signingIdentity CERTIFICATE_SHA1
+```
+
+An Apple Development certificate works for local builds. The selection stays in local Git configuration; the certificate and private key stay in Keychain.
+
 ```sh
 make test
 make build
@@ -36,14 +45,16 @@ make install
 open /Applications/Diorama.app
 ```
 
-`make build` creates an optimized release at `dist/Diorama.app`, ad-hoc signed with hardened runtime. `DIORAMA_SIGNING_IDENTITY` selects an installed signing identity and `DIORAMA_BUILD_CONFIGURATION=debug` selects a development build. `make run` builds and opens the repository's bundle; `make icon` regenerates `Support/Diorama.icns` from `Support/AppIcon.png`. Set `DIORAMA_INSTALL_DIR="$HOME/Applications"` for a user-local installation. The installer verifies a staged copy before replacing an older bundle, refuses to overwrite an unrelated app or symbolic link, and asks you to quit a running Diorama first. `make verify` checks the built bundle, entitlements, icon, executable boundaries, and runtime library paths.
+`make build` creates an optimized release at `dist/Diorama.app`, signed with the configured certificate and hardened runtime. Missing or unavailable identities fail the build instead of silently switching signers. `DIORAMA_SIGNING_IDENTITY` explicitly overrides the local selection, and `DIORAMA_BUILD_CONFIGURATION=debug` selects a development build. CI explicitly uses `DIORAMA_SIGNING_IDENTITY=-` for disposable ad-hoc artifacts; installing those over a certificate-signed local build changes its identity and can require permissions again.
+
+`make run` builds and opens the repository's bundle; `make icon` regenerates `Support/Diorama.icns` from `Support/AppIcon.png`. Set `DIORAMA_INSTALL_DIR="$HOME/Applications"` for a user-local installation. The installer verifies a staged copy before replacing an older bundle, refuses to overwrite an unrelated app or symbolic link, and asks you to quit a running Diorama first. `make verify` checks the built bundle, entitlements, icon, executable boundaries, and runtime library paths.
 
 On first launch the setup screen explains two permissions. Use its **Allow…** buttons to open the corresponding macOS settings:
 
 - **Screen & System Audio Recording** — to capture the virtual display. macOS applies this after the app is relaunched.
 - **Accessibility** — to fence the pointer, route it into the box and move other applications' windows.
 
-The virtual display starts only after both permissions are available. Revoking access releases the pointer and removes the display. Ad-hoc signatures can change when the executable changes, which may require granting permissions again. Use a stable signing identity and a consistent app location for a smoother development loop.
+The virtual display starts only after both permissions are available. Revoking access releases the pointer and removes the display. Switching from an older ad-hoc build to the certificate-signed build requires granting permissions once more. Subsequent builds keep a stable designated requirement tied to the certificate and bundle identifier. Keep using the same app location. If Settings shows an obsolete grant as allowed, quit Diorama, remove that entry, add the current app bundle, and reopen it.
 
 ## Access boundary
 
