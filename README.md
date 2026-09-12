@@ -10,16 +10,18 @@ Diorama creates a second, invisible display on your Mac and shows it live inside
 
 The box is a real display as far as macOS is concerned — it has its own wallpaper, menu bar, Spaces and resolution — but it has no physical screen behind it. Diorama captures it with ScreenCaptureKit and paints the frames into the stage window.
 
-Once both permissions are granted, Diorama fences the pointer off that display. Diorama fences it off, so the edge of your real screen stays a hard edge. There are two deliberate ways in:
+Once both permissions are granted, Diorama fences the pointer off that display, so the edge of your real screen stays a hard edge. There are two deliberate ways in:
 
 - **Move the pointer into the picture.** While it is inside, it lives on the virtual display: clicks, drags, scrolling and typing all go to the windows in the box, and the picture follows your hand one to one. Move out of the picture, or push against its edge, and the pointer pops back out beside it.
 - **Send a window.** Press ⌃⌥⌘D in any application to move its front window into Diorama, ⌃⌥⌘B to bring it back, and ⌃⌥⌘R to return everything. The toolbar and **Stage** menu use the last active application when Diorama itself is frontmost.
 
 Switch **Stage › Interactive** off (⌃⌥⌘I) for a view-only stage. Closing the stage window quits Diorama and removes the virtual display; macOS returns its windows to a remaining display. Capture failures release the pointer and show an error with **Try Again**; Diorama also retries after five seconds.
 
+A plain left-click on empty wallpaper inside the stage is ignored, preventing macOS's **Click wallpaper to reveal desktop** action from sweeping windows away on every display. App windows, menus, the Dock, and desktop context clicks remain interactive. The virtual display shares your macOS login session; Diorama does not change your global desktop settings.
+
 ## Screenshots
 
-⌃⌥⌘S saves a full-resolution PNG of the whole virtual desktop — wallpaper, menu bar and windows, no cursor — to `~/Pictures/Diorama`, named like macOS screenshots. Repeated captures within the same second get a numeric suffix, preserving every image. **Stage › Copy Screenshot** puts the same image on the clipboard. Because the box never changes unless you change it, every screenshot shows the same tidy, complete desktop without rearranging anything on your real screen.
+The camera button or ⌃⌥⌘S saves a full-resolution PNG of the whole virtual desktop — wallpaper, menu bar and windows, no cursor — to `~/Pictures/Diorama`, then opens it in **Preview** for copying, cropping, or annotation. Repeated captures within the same second get a numeric suffix, preserving every image. If Preview cannot open, Diorama reveals the saved file in Finder. **Stage › Copy Screenshot** (⇧⌘C) puts a fresh capture directly on the clipboard. Because the box never changes unless you change it, every screenshot shows the same tidy, complete desktop without rearranging anything on your real screen.
 
 The display offers Retina resolutions from 1024 × 576 to 1920 × 1080 points (2048 × 1152 to 3840 × 2160 pixels) under **Stage › Resolution**. Pick the one that matches the screenshots you want; 1920 × 1080 is the default.
 
@@ -47,7 +49,7 @@ The virtual display starts only after both permissions are available. Revoking a
 
 Diorama runs outside Apple App Sandbox: it installs a system-wide event tap, moves other applications' windows through the Accessibility API and creates a display using CoreGraphics interfaces that are not part of the public SDK. The `CGVirtualDisplay` classes are declared in `Sources/CGVirtualDisplayShim` and resolved from CoreGraphics at link time; they are the same interfaces used by virtual display utilities such as DeskPad and BetterDisplay, and they may change in a future macOS release.
 
-This preserves the original project’s access boundary. No sandbox exceptions or additional entitlements are added by the alignment review. The event tap only rewrites pointer locations and consumes its own five hotkeys; it does not log or forward keystrokes. Screenshots stay on your Mac. No network access is used.
+This preserves the original project’s access boundary. No sandbox exceptions or additional entitlements are added by the alignment review. The event tap rewrites pointer locations, suppresses primary wallpaper gestures inside the stage, and consumes its own five hotkeys; it does not log or forward keystrokes. Screenshots stay on your Mac. No network access is used.
 
 ## Repository layout
 

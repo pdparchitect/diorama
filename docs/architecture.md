@@ -32,6 +32,8 @@ The view also reports where the picture actually is: after every move, resize, s
 
 While captured, only the event location is rewritten: a HID-level event's rewritten location is where the window server puts the cursor, and warping on every event made macOS suppress hardware pointer events for a moment each time, which showed as stutter. The cursor is warped only for the jumps between displays — capture, release and keeping a free pointer off the virtual display — and each warp is followed by `CGAssociateMouseAndMouseCursorPosition(true)`, which cancels that suspension. The tap is re-enabled if macOS disables it for taking too long. Hotkeys are matched in the same tap (Control-Option-Command plus a letter) and consumed so no application sees them. Autorepeat is ignored. Actions are dispatched out of the callback before any Accessibility window queries run; slow applications cannot hold the event tap open. Geometry changes release using the previous mapping, and non-movement events do not supply hardware deltas for edge-push detection.
 
+Before delivering a captured primary mouse-down, `InputBridge` hit-tests its mapped virtual point using `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)`. A zero result identifies empty wallpaper. `WallpaperClickGuard` consumes that down and its matching drag/up events, even if the pointer subsequently leaves the stage, preventing an orphaned gesture from reaching a different window or physical display. Control-click and secondary buttons retain desktop context menus. Ordinary clicks outside the stage are not hit-tested or suppressed. Consumed drags explicitly warp the cursor because there is no delivered event to update its position. This avoids invoking macOS's session-wide reveal-desktop action without changing a global preference.
+
 ## Windows move through Accessibility
 
 The model remembers the last activated regular application. `WindowMover` reads that application's focused window when Diorama owns focus, or the frontmost application's focused window when invoked by a global shortcut and every regular application's windows through `AXUIElement`, with a short messaging timeout so an unresponsive application cannot stall the UI. A window is "in Diorama" when its top-left corner lies inside the display bounds. Moving keeps the window's size when it fits and centres it on the destination display.
@@ -39,6 +41,8 @@ The model remembers the last activated regular application. `WindowMover` reads 
 ## Screenshots
 
 `Screenshots` uses `SCScreenshotManager` on the same content filter as the stream, at full pixel resolution and without the cursor, and encodes PNG with ImageIO. Files go to `~/Pictures/Diorama` with the macOS screenshot naming pattern produced by `ScreenshotNaming`. Exclusive creation and numeric suffixes prevent collisions, including another process saving in the same second. PNG encoding completes before the clipboard is cleared.
+
+After a successful save, the model releases the captured pointer and opens the file explicitly with Preview through `NSWorkspace`. A Preview launch failure preserves the save and reveals the file in Finder. Copy Screenshot remains a clipboard-only action.
 
 ## Application boundary
 

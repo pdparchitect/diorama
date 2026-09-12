@@ -10,6 +10,7 @@ final class InputBridge: @unchecked Sendable {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private(set) var fence = CursorFence()
+    private var wallpaperClicks = WallpaperClickGuard()
 
     /// Window number of the stage window, used to make sure the stage is actually the topmost window under the pointer.
     var stageWindowNumber = 0
@@ -50,6 +51,7 @@ final class InputBridge: @unchecked Sendable {
         if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
         source = nil
         tap = nil
+        wallpaperClicks = WallpaperClickGuard()
     }
 
     func update(geometry: StageGeometry?, virtualBounds: CGRect?, physicalBounds: [CGRect], interactive: Bool) {
@@ -90,17 +92,24 @@ final class InputBridge: @unchecked Sendable {
             let isMovement = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged].contains(type)
             let delta = isMovement ? CGVector(dx: event.getDoubleValueField(.mouseEventDeltaX), dy: event.getDoubleValueField(.mouseEventDeltaY)) : .zero
             let decision = fence.process(location: event.location, rawDelta: delta) { point in self.stageIsTopmost(at: point) }
-            apply(decision, to: event)
-            return Unmanaged.passUnretained(event)
+            let target = decision.location ?? event.location
+            let consumed = wallpaperClicks.consumes(type, captured: fence.isCaptured, flags: event.flags) {
+                // Use the mapped virtual point, not the physical stage window under the user's hand.
+                // AppKit's mouse-down hit test returns zero for empty wallpaper, including Finder's desktop background.
+                self.windowNumber(at: target) == 0
+            }
+            apply(decision, to: event, delivered: !consumed)
+            return consumed ? nil : Unmanaged.passUnretained(event)
         }
     }
 
-    private func apply(_ decision: CursorFence.Decision, to event: CGEvent?) {
+    private func apply(_ decision: CursorFence.Decision, to event: CGEvent?, delivered: Bool = true) {
         if let location = decision.location { event?.location = location }
         // Rewriting a HID-level event's location already moves the cursor there, and every warp makes macOS suppress
         // hardware pointer events for a moment, which shows as stutter. So the cursor is only warped for the jumps between
         // displays: capture, release, and keeping a free pointer off the virtual display.
-        let tracking = event != nil && fence.isCaptured && decision.transition == nil
+        // A consumed event cannot move the system cursor itself; keep tracking even during a swallowed drag.
+        let tracking = delivered && event != nil && fence.isCaptured && decision.transition == nil
         if let warp = decision.warp, !tracking {
             _ = CGWarpMouseCursorPosition(warp)
             // Re-associating the cursor lifts the post-warp suspension immediately.
@@ -115,10 +124,14 @@ final class InputBridge: @unchecked Sendable {
     private func stageIsTopmost(at point: CGPoint) -> Bool {
         let windowNumber = stageWindowNumber
         guard windowNumber != 0 else { return false }
+        return self.windowNumber(at: point) == windowNumber
+    }
+
+    private func windowNumber(at point: CGPoint) -> Int? {
         return MainActor.assumeIsolated {
-            guard let primary = NSScreen.screens.first else { return false }
+            guard let primary = NSScreen.screens.first else { return nil }
             let appKitPoint = NSPoint(x: point.x, y: primary.frame.height - point.y)
-            return NSWindow.windowNumber(at: appKitPoint, belowWindowWithWindowNumber: 0) == windowNumber
+            return NSWindow.windowNumber(at: appKitPoint, belowWindowWithWindowNumber: 0)
         }
     }
 }

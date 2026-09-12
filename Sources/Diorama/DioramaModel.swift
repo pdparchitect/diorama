@@ -337,6 +337,14 @@ final class DioramaModel: ObservableObject {
                 let url = try Screenshots.save(image)
                 lastScreenshot = url
                 status = "Saved \(url.lastPathComponent) in Pictures › Diorama."
+                releasePointer()
+                do {
+                    try await Screenshots.openInPreview(url)
+                    status = "Opened \(url.lastPathComponent) in Preview."
+                } catch {
+                    status = "Screenshot saved in Pictures › Diorama, but Preview could not open it: \(error.localizedDescription)"
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
             } catch {
                 status = "Screenshot failed: \(error.localizedDescription)"
             }

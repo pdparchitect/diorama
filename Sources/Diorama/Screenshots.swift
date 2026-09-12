@@ -56,4 +56,14 @@ enum Screenshots {
         pasteboard.clearContents()
         guard pasteboard.setData(data, forType: .png) else { throw DioramaError.message("Cannot write to the clipboard.") }
     }
+
+    static func openInPreview(_ url: URL) async throws {
+        let workspace = NSWorkspace.shared
+        guard let preview = workspace.urlForApplication(withBundleIdentifier: "com.apple.Preview") else {
+            throw DioramaError.message("Preview could not be found.")
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        _ = try await workspace.open([url], withApplicationAt: preview, configuration: configuration)
+    }
 }

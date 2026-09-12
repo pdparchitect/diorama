@@ -32,7 +32,7 @@ struct StageWindow: View {
                     .help("Bring every window back from Diorama to your main display (⌃⌥⌘R)")
                     .disabled(model.displayBounds.isEmpty || !model.accessibilityGranted)
                 Button { model.saveScreenshot() } label: { Label("Screenshot", systemImage: "camera") }
-                    .help("Save a full-resolution screenshot of the whole virtual desktop (⌃⌥⌘S)")
+                    .help("Capture the whole virtual desktop and open it in Preview (⌃⌥⌘S)")
                     .disabled(!model.streaming)
             }
         }
