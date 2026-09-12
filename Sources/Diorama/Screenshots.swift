@@ -1,6 +1,7 @@
 import AppKit
 import DioramaCore
-import ScreenCaptureKit
+// macOS 15 SDK headers predate ScreenCaptureKit's Sendable annotations. Content snapshots are read on MainActor.
+@preconcurrency import ScreenCaptureKit
 import UniformTypeIdentifiers
 
 /// Full-resolution stills of the virtual display: the complete desktop, wallpaper and menu bar included, without the cursor.

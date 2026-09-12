@@ -1,7 +1,8 @@
 import AppKit
 import CoreMedia
 import IOSurface
-import ScreenCaptureKit
+// macOS 15 SDK headers predate ScreenCaptureKit's Sendable annotations. Content snapshots are read on MainActor.
+@preconcurrency import ScreenCaptureKit
 import os
 
 /// One captured frame. The sample buffer is retained alongside the surface so ScreenCaptureKit does not recycle the
@@ -168,6 +169,7 @@ private final class ScreenCaptureSession: StageCaptureSession {
     }
 }
 
+@MainActor
 enum ShareableContent {
     /// Every display and window, including those on other Spaces and displays.
     static func current() async throws -> SCShareableContent {

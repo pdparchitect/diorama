@@ -24,6 +24,7 @@ The review used the smaller sibling macOS projects; Noodle was excluded.
 - The private display initializer is nullable and mode-configuration failures cancel their transaction.
 - Build output is staged and verified before replacement. Installation replaces the complete bundle, verifies source/staged/destination copies, and refuses unrelated apps and symlinks.
 - CI archives the app as a ZIP to preserve executable permissions. Documentation no longer promises dragging through a fenced screen edge or app-menu integration that Diorama does not implement.
+- ScreenCaptureKit imports account for the macOS 15 SDK's missing concurrency annotations; shareable-content snapshot access stays on the main actor. This was caught by CI using Xcode 16.4, independently of the newer local SDK.
 
 ## Validation
 
