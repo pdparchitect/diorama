@@ -1,6 +1,6 @@
 # Development
 
-Requires macOS 15 or later and Xcode Command Line Tools with Swift 6. Release packaging runs on Apple Silicon. Swift Package Manager pins Sparkle in `Package.swift` and `Package.resolved`; no other third-party runtime dependency is used.
+Building requires the macOS 26 SDK or later with Swift 6.2 or later. The app runs on macOS 15 or later. Release packaging runs on Apple Silicon. Swift Package Manager pins Sparkle in `Package.swift` and `Package.resolved`; no other third-party runtime dependency is used.
 
 ## Build and run
 
