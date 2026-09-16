@@ -16,7 +16,7 @@
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>DioramaUpdatesEnabled</key><false/>
 <key>SUFeedURL</key><string>https://github.com/pdparchitect/diorama/releases/latest/download/appcast.xml</string>
-<key>SUPublicEDKey</key><string>1ZT5NrPiDPaQ54iHGSI1a9JIn6kTrmjQvzZRBA9f/sk=</string>
+<key>SUPublicEDKey</key><string>29H/zgBAz9Hm3SUXNT69GxQq1JfDPUWWkqu7364LyR0=</string>
 <key>SURequireSignedFeed</key><true/>
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
 <key>SUEnableAutomaticChecks</key><true/>

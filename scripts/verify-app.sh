@@ -20,7 +20,7 @@ required = {
     'CFBundleIconFile': 'Diorama',
     'LSMinimumSystemVersion': '15.0',
     'SUFeedURL': 'https://github.com/pdparchitect/diorama/releases/latest/download/appcast.xml',
-    'SUPublicEDKey': '1ZT5NrPiDPaQ54iHGSI1a9JIn6kTrmjQvzZRBA9f/sk=',
+    'SUPublicEDKey': '29H/zgBAz9Hm3SUXNT69GxQq1JfDPUWWkqu7364LyR0=',
     'SURequireSignedFeed': True,
     'SUVerifyUpdateBeforeExtraction': True,
     'SUEnableAutomaticChecks': True,
