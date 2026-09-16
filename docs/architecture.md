@@ -51,6 +51,6 @@ Diorama retains its existing unsandboxed boundary for global input, Accessibilit
 
 `AppUpdater` owns Sparkle's standard updater controller. It starts only when `DioramaUpdatesEnabled` is true in the packaged app; local builds leave it off. The app menu and Settings observe Sparkle's availability and preferences. Installation uses normal application termination, so the model's shutdown releases input and destroys the display before relaunch.
 
-The Swift package pins Sparkle. Packaging embeds its framework and installer tools, removes unused XPC services, strips development library search paths, signs inside-out, and verifies the resulting bundle. `VERSION` supplies both bundle version fields. See [releases](releases.md) for signing, notarization, signed feeds, and publication, and [development](development.md) for tests and live interaction checks.
+The Swift package pins Sparkle. Packaging embeds its framework and installer tools, removes unused XPC services, strips development library search paths, signs inside-out, and verifies the resulting bundle. `VERSION` supplies both bundle version fields. See [security and privacy](security.md) for update verification, and [development](development.md) for tests and live interaction checks.
 
 [Documentation](README.md)

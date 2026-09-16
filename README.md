@@ -29,5 +29,5 @@ Screenshots are saved in `~/Pictures/Diorama`. Closing the stage quits Diorama a
 - [Permissions, privacy, and updates](docs/security.md)
 - [Development and testing](docs/development.md)
 - [Architecture](docs/architecture.md)
-- [Releases and signing](docs/releases.md)
+- [Downloads and updates](docs/releases.md)
 - [Changelog](CHANGELOG.md)

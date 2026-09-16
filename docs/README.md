@@ -4,7 +4,7 @@
 - [Security and privacy](security.md) — permissions, access boundary, and update verification.
 - [Development](development.md) — build, install, test, and maintain the app.
 - [Architecture](architecture.md) — virtual display, capture, input, and window management.
-- [Releases](releases.md) — signing credentials, versioning, publication, and recovery.
+- [Downloads and updates](releases.md) — install the app and keep it up to date.
 - [Changelog](../CHANGELOG.md) — changes by version.
 
 [Back to Diorama](../README.md)

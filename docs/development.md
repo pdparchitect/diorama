@@ -19,7 +19,7 @@ An Apple Development certificate works locally. Its private key stays in Keychai
 
 `make build` creates `dist/Diorama.app` with hardened runtime. `make run` builds and opens it. Set `DIORAMA_BUILD_CONFIGURATION=debug` for a debug build or `DIORAMA_INSTALL_DIR="$HOME/Applications"` for user-local installation. Quit Diorama before installing. The installer verifies a staged copy before replacement and refuses unrelated apps and symbolic links.
 
-Development builds have update checks disabled so public releases cannot replace local work. `VERSION` supplies both app version fields. Use the [release process](releases.md) for distributable binaries.
+Development builds have update checks disabled so public releases cannot replace local work. `VERSION` supplies both app version fields.
 
 ## Check changes
 
