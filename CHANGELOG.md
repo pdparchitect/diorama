@@ -1,11 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.0] - 2026-09-16
 
-- Adopt Noodle-style dark, tabbed settings with fitted pane transitions, native app-menu ordering, and GitHub Help.
-- Link against the selected macOS SDK so native controls and settings use the correct system appearance.
-- Keep settings stable during background desktop updates using property-level observation, and match Noodle's unified window toolbar.
-- Keep Interactive available in the stage toolbar, menu, and shortcut; remove it from Settings.
-- Create an interactive virtual desktop with window shortcuts and Retina screenshots.
-- Check for updates from Diorama, with daily checks and optional automatic installation.
-- Build signed, notarized releases and a signed update feed through GitHub Actions.
+Initial public release for macOS 15 or later on Apple Silicon.
+
+- Keep a complete Mac desktop inside one window and interact with its apps directly.
+- Move windows into and out of Diorama with global keyboard shortcuts.
+- Capture clean Retina screenshots to a file or the clipboard.
+- Choose the desktop resolution and switch between interactive and view-only modes.
+- Manage permissions and update preferences in native, tabbed settings.
+- Receive signed, notarized updates with daily checks and optional automatic installation.
