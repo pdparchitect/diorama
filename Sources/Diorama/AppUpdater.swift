@@ -68,10 +68,10 @@ struct UpdatesSettingsView: View {
             }
             Section {
                 Toggle("Automatically check for updates", isOn: Binding(
-                    get: { updater.automaticallyChecks }, set: updater.setAutomaticChecks
+                    get: { updater.automaticallyChecks }, set: { updater.setAutomaticChecks($0) }
                 ))
                 Toggle("Automatically download and install updates", isOn: Binding(
-                    get: { updater.automaticallyDownloads }, set: updater.setAutomaticDownloads
+                    get: { updater.automaticallyDownloads }, set: { updater.setAutomaticDownloads($0) }
                 ))
                 .disabled(!updater.allowsAutomaticUpdates)
             }
