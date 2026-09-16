@@ -1,4 +1,6 @@
 .build/
 .swiftpm/
 dist/
+.release/
+__pycache__/
 .DS_Store

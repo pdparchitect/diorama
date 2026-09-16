@@ -8,10 +8,19 @@
 <key>CFBundleIconFile</key><string>Diorama</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleVersion</key><string>0.1.0</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Petko D. Petkov</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
+<key>DioramaUpdatesEnabled</key><false/>
+<key>SUFeedURL</key><string>https://github.com/pdparchitect/diorama/releases/latest/download/appcast.xml</string>
+<key>SUPublicEDKey</key><string>1ZT5NrPiDPaQ54iHGSI1a9JIn6kTrmjQvzZRBA9f/sk=</string>
+<key>SURequireSignedFeed</key><true/>
+<key>SUVerifyUpdateBeforeExtraction</key><true/>
+<key>SUEnableAutomaticChecks</key><true/>
+<key>SUScheduledCheckInterval</key><integer>86400</integer>
+<key>SUAutomaticallyUpdate</key><false/>
+<key>SUSendProfileInfo</key><false/>
 </dict></plist>

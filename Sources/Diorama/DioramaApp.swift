@@ -11,9 +11,15 @@ struct DioramaApp: App {
         Window("Diorama", id: "stage") {
             StageWindow(model: model)
                 .onAppear { model.start() }
+                .onDisappear { NSApp.terminate(nil) }
         }
         .defaultSize(width: 1120, height: 690)
-        .commands { StageCommands(model: model) }
+        .commands {
+            StageCommands(model: model)
+            CommandGroup(after: .appInfo) { CheckForUpdatesButton() }
+        }
+
+        Settings { UpdatesSettingsView() }
     }
 }
 
@@ -60,6 +66,7 @@ final class DioramaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        AppUpdater.shared.start()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }

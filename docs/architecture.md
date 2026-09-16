@@ -44,30 +44,12 @@ The model remembers the last activated regular application. `WindowMover` reads 
 
 After a successful save, the model releases the captured pointer and opens the file explicitly with Preview through `NSWorkspace`. A Preview launch failure preserves the save and reveals the file in Finder. Copy Screenshot remains a clipboard-only action.
 
-## Application boundary
+## Application boundary and updates
 
-Diorama runs outside App Sandbox by necessity: an active session-wide event tap, Accessibility control of other applications' windows, and the private display classes all require it. The bundle is signed with hardened runtime and no entitlements. It has no helper processes, no network access and no third-party code. The setup screen requests Screen Recording and Accessibility only when its buttons are used. Both are required before the display is created: even a view-only stage needs the fence. Access is checked once a second; revocation stops capture, releases the pointer, and removes the display. Closing the single stage window quits the app. This review preserves the existing unsandboxed boundary and adds no entitlements.
+Diorama retains its existing unsandboxed boundary for global input, Accessibility, and private display APIs. Both user permissions are required before display creation and checked once a second. Revocation releases the pointer, stops capture, and removes the display. See [security and privacy](security.md).
 
-Local builds select a persistent Keychain certificate from `diorama.signingIdentity` in the checkout's local Git configuration. `DIORAMA_SIGNING_IDENTITY` is an explicit override; ad-hoc signing requires setting it to `-`, as CI does for disposable artifacts. Missing configuration or an unavailable certificate never triggers an ad-hoc fallback. `codesign` generates the certificate-backed designated requirement; no custom or identifier-only requirement is supplied. This keeps the app's code identity stable across executable changes while preserving signer authentication.
+`AppUpdater` owns Sparkle's standard updater controller. It starts only when `DioramaUpdatesEnabled` is true in the packaged app; local builds leave it off. The app menu and Settings observe Sparkle's availability and preferences. Installation uses normal application termination, so the model's shutdown releases input and destroys the display before relaunch.
 
-## Validation
+The Swift package pins Sparkle. Packaging embeds its framework and installer tools, removes unused XPC services, strips development library search paths, signs inside-out, and verifies the resulting bundle. `VERSION` supplies both bundle version fields. See [releases](releases.md) for signing, notarization, signed feeds, and publication, and [development](development.md) for tests and live interaction checks.
 
-`make test` runs the core tests: aspect fitting, coordinate mapping, clamping, every fence transition (capture, one-to-one tracking, release by leaving, release by pushing, re-arming, stage disappearing, explicit release), hotkey matching, screenshot naming and resolution invariants. `Tests/DioramaTests` additionally exercises unexpected capture stop and retry, stop during startup, superseded startup completion, failed startup cleanup, and screenshot name collisions. `scripts/verify-app.sh` checks the actual signature, hardened runtime, empty entitlement set, single-executable boundary, metadata, icon, linked libraries, and runtime search paths. The build removes Xcode fallback runtime paths before signing. The installer stages and verifies the whole replacement rather than merging bundle contents.
-
-## Verification status
-
-The repository was first authored without access to a macOS toolchain. The following has since been confirmed on macOS 26.6 with Swift 6.3:
-
-1. The package compiles cleanly under Swift 6 strict concurrency with no warnings (`make test`, `make build`), and the signed bundle passes `scripts/verify-app.sh`.
-2. All four private classes exist in CoreGraphics with exactly the selectors the shim declares. `CGVirtualDisplay` creation succeeds, the display appears in the active display list next to the main display, every offered Retina mode is usable, and `CGConfigureDisplayWithDisplayMode` switches between them. The display disappears when the process exits.
-3. The app launches, creates the display and shows the stage window with the permission placeholders.
-
-Still to confirm on a Mac with Screen Recording and Accessibility granted to the app:
-
-1. Rewriting a pointer event's location in a HID-level tap places the cursor where the fence intends without drift while captured. Warping on every event as well was tried first and made the pointer stutter, so the warp is now limited to transitions.
-2. Pushing against a non-adjacent edge of the virtual display reports a non-zero raw delta while the cursor is pinned, so the push release fires.
-3. ScreenCaptureKit delivers frames for the virtual display at 60 Hz with the cursor drawn while it is captured.
-
-## Alignment follow-up, 12 September 2026
-
-See [review.md](review.md) for the current validation record. The earlier private-display observations above were retained from the existing working tree. This review verified the rebuilt setup screen on macOS 26.6.2; the remaining permission-dependent checks above are still open.
+[Documentation](README.md)
