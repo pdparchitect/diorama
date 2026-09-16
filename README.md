@@ -4,7 +4,7 @@
 
 # Diorama
 
-**A desktop in a box.**
+**A virtual display for taking clean screenshots on macOS.**
 
 <p>
   <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-%E2%89%A515-0a0a0a?style=flat-square&logo=apple&logoColor=white">
@@ -21,9 +21,9 @@
   <img width="100%" alt="A Mac desktop running inside Diorama" src="https://github.com/user-attachments/assets/4980e638-3788-4a44-bed9-79213b4f4937" />
 </p>
 
-Keep a complete Mac desktop inside one window. Arrange apps on its virtual display,
-work with them directly, and capture clean Retina screenshots without rearranging
-your own desktop.
+Capture clean Retina screenshots of your apps without tidying or rearranging your
+desktop. Diorama gives you a separate Mac desktop inside one window. Arrange your
+apps, work with them directly, and capture the scene when it's ready.
 
 ## Download
 
