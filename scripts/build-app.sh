@@ -25,6 +25,10 @@ if [[ "$release" == 1 && ( "$identity" != Developer\ ID\ Application:* || "$conf
 fi
 timestamp_option=--timestamp=none
 if [[ "$release" == 1 ]]; then timestamp_option=--timestamp; fi
+signing_options=(--force --options runtime "$timestamp_option" --sign "$identity")
+if [[ -n "${DIORAMA_SIGNING_KEYCHAIN:-}" ]]; then
+  signing_options+=(--keychain "$DIORAMA_SIGNING_KEYCHAIN")
+fi
 export CLANG_MODULE_CACHE_PATH="$project_root/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 mkdir -p "$CLANG_MODULE_CACHE_PATH"
@@ -66,7 +70,7 @@ if [[ "$release" == 1 ]]; then
 fi
 # Sign nested code inside-out, without inheriting or adding entitlement grants.
 for component in "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" "$sparkle" "$app"; do
-  codesign --force --options runtime "$timestamp_option" --sign "$identity" "$component"
+  codesign "${signing_options[@]}" "$component"
 done
 "$project_root/scripts/verify-app.sh" "$app" >&2
 rm -rf "$output"
