@@ -1,3 +1,5 @@
+<p align="center"><img src="Support/AppIcon.png" width="200" alt="Diorama application icon"></p>
+
 # Diorama
 
 A desktop in a box.
@@ -6,7 +8,7 @@ A desktop in a box.
 
 Keep a complete Mac desktop inside one window. Arrange apps on its virtual display, work with them directly, and capture clean Retina screenshots without rearranging your own desktop.
 
-<p align="center"><img src="Support/AppIcon.png" width="200" alt="Diorama application icon"></p>
+<img width="1656" height="1242" alt="Xnapper-2026-09-16-11 49 19" src="https://github.com/user-attachments/assets/4980e638-3788-4a44-bed9-79213b4f4937" />
 
 ## Download
 
