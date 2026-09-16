@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /// Decides, for every pointer event, where the cursor is allowed to be.
 ///
@@ -58,6 +59,8 @@ public struct CursorFence: Sendable, Equatable {
     }
     /// Events already queued at release may still use virtual coordinates until the warp reaches WindowServer.
     private var releaseHandoff: ReleaseHandoff?
+    /// A gesture that is already held on the physical desktop must finish there, even if the stage moves under it.
+    private var pressedButtons: Set<Int64> = []
 
     public init() {}
 
@@ -72,7 +75,28 @@ public struct CursorFence: Sendable, Equatable {
     ///   - rawDelta: relative movement reported by a move/drag event, or zero for clicks and scrolling. Used when display
     ///     boundaries or a pending release warp make absolute coordinates unreliable.
     ///   - stageHit: whether the stage window is the topmost window at a point on the physical screen.
-    public mutating func process(location: CGPoint, rawDelta: CGVector, stageHit: (CGPoint) -> Bool) -> Decision {
+    public mutating func process(location: CGPoint, rawDelta: CGVector, type: CGEventType = .mouseMoved,
+                                 buttonNumber: Int64 = 0, stageHit: (CGPoint) -> Bool) -> Decision {
+        let button: Int64
+        switch type {
+        case .rightMouseDown, .rightMouseDragged, .rightMouseUp: button = 1
+        case .otherMouseDown, .otherMouseDragged, .otherMouseUp: button = buttonNumber
+        default: button = 0
+        }
+        switch type {
+        case .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
+             .leftMouseUp, .rightMouseUp, .otherMouseUp:
+            // Also handles a tap installed midway through a drag. Never capture an unmatched drag or mouse-up.
+            pressedButtons.insert(button)
+        default: break
+        }
+        defer {
+            switch type {
+            case .leftMouseDown, .rightMouseDown, .otherMouseDown: pressedButtons.insert(button)
+            case .leftMouseUp, .rightMouseUp, .otherMouseUp: pressedButtons.remove(button)
+            default: break
+            }
+        }
         switch mode {
         case .free:
             return processFree(location: location, rawDelta: rawDelta, stageHit: stageHit)
@@ -112,7 +136,7 @@ public struct CursorFence: Sendable, Equatable {
             armed = true
             return .passthrough
         }
-        guard interactive, armed, stageHit(location) else { return .passthrough }
+        guard interactive, armed, pressedButtons.isEmpty, stageHit(location) else { return .passthrough }
         let target = geometry.toDisplay(location)
         mode = .captured(shadow: location, target: target)
         return Decision(location: target, warp: target, transition: .entered)

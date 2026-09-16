@@ -1,4 +1,5 @@
 import XCTest
+import CoreGraphics
 @testable import DioramaCore
 
 final class CursorFenceTests: XCTestCase {
@@ -203,6 +204,79 @@ final class CursorFenceTests: XCTestCase {
         XCTAssertEqual(decision?.transition, .exited)
         XCTAssertEqual(decision?.warp, CGPoint(x: 680, y: 570))
         XCTAssertFalse(fence.isCaptured)
+    }
+
+    func testPhysicalGesturesCannotCaptureEvenWhenTheStageMovesUnderThePointer() {
+        let gestures: [(CGEventType, CGEventType, CGEventType, Int64)] = [
+            (.leftMouseDown, .leftMouseDragged, .leftMouseUp, 0),
+            (.rightMouseDown, .rightMouseDragged, .rightMouseUp, 1),
+            (.otherMouseDown, .otherMouseDragged, .otherMouseUp, 3)
+        ]
+        for (down, drag, up, button) in gestures {
+            var fence = makeFence()
+            let point = CGPoint(x: 680, y: 270) // The window's title bar, above the picture.
+            _ = fence.process(location: point, rawDelta: .zero, type: down, buttonNumber: button) { _ in true }
+            fence.geometry = StageGeometry(stage: stage.offsetBy(dx: 0, dy: -100), display: virtual)
+            for type in [drag, .scrollWheel, .mouseMoved, up] {
+                let decision = fence.process(location: point, rawDelta: .zero, type: type, buttonNumber: button) { _ in true }
+                XCTAssertEqual(decision, .passthrough, "Unexpected capture for \(type)")
+                XCTAssertFalse(fence.isCaptured)
+            }
+            XCTAssertEqual(move(&fence, to: point).transition, .entered)
+        }
+    }
+
+    func testUnmatchedDragAndMouseUpCannotCapture() {
+        for type: CGEventType in [.leftMouseDragged, .leftMouseUp] {
+            var fence = makeFence()
+            let decision = fence.process(location: CGPoint(x: 680, y: 570), rawDelta: .zero, type: type) { _ in true }
+            XCTAssertEqual(decision, .passthrough)
+            XCTAssertFalse(fence.isCaptured)
+        }
+    }
+
+    func testPhysicalDragStillCannotEnterVirtualDisplay() {
+        var fence = makeFence()
+        let decision = fence.process(location: CGPoint(x: 1800, y: 500), rawDelta: .zero, type: .leftMouseDragged) { _ in true }
+        XCTAssertEqual(decision.location, CGPoint(x: 1727, y: 500))
+        XCTAssertFalse(fence.isCaptured)
+    }
+
+    func testAllPhysicalButtonsMustBeReleasedBeforeCapture() {
+        var fence = makeFence()
+        for type: CGEventType in [.leftMouseDown, .rightMouseDown] {
+            _ = fence.process(location: CGPoint(x: 50, y: 50), rawDelta: .zero, type: type) { _ in true }
+        }
+        let point = CGPoint(x: 680, y: 570)
+        _ = fence.process(location: point, rawDelta: .zero, type: .leftMouseUp) { _ in true }
+        XCTAssertEqual(move(&fence, to: point), .passthrough)
+        _ = fence.process(location: point, rawDelta: .zero, type: .rightMouseUp) { _ in true }
+        XCTAssertFalse(fence.isCaptured)
+        XCTAssertEqual(move(&fence, to: point).transition, .entered)
+    }
+
+    func testClickAndDragStartedInsideStageStillWork() {
+        var fence = makeFence()
+        let down = fence.process(location: CGPoint(x: 680, y: 570), rawDelta: .zero, type: .leftMouseDown) { _ in true }
+        XCTAssertEqual(down.transition, .entered)
+        let drag = fence.process(location: CGPoint(x: 2698, y: 544), rawDelta: CGVector(dx: 10, dy: 4), type: .leftMouseDragged) { _ in true }
+        XCTAssertEqual(drag.location, CGPoint(x: 2708, y: 548))
+        XCTAssertNil(drag.transition)
+        let up = fence.process(location: CGPoint(x: 2708, y: 548), rawDelta: .zero, type: .leftMouseUp) { _ in true }
+        XCTAssertEqual(up.location, drag.location)
+        XCTAssertTrue(fence.isCaptured)
+    }
+
+    func testReleasedDragCannotRecaptureBeforeMouseUp() {
+        var fence = makeFence()
+        _ = fence.process(location: CGPoint(x: 680, y: 570), rawDelta: .zero, type: .leftMouseDown) { _ in true }
+        _ = fence.release()
+        _ = move(&fence, to: CGPoint(x: 50, y: 50)) // Rearm outside the stage, still holding the button.
+        let point = CGPoint(x: 680, y: 570)
+        XCTAssertEqual(move(&fence, to: point), .passthrough)
+        let up = fence.process(location: point, rawDelta: .zero, type: .leftMouseUp) { _ in true }
+        XCTAssertEqual(up, .passthrough)
+        XCTAssertEqual(move(&fence, to: point).transition, .entered)
     }
 
     func testHotkeysRequireExactModifiers() {

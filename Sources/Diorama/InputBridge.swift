@@ -51,6 +51,7 @@ final class InputBridge: @unchecked Sendable {
         if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
         source = nil
         tap = nil
+        fence = CursorFence()
         wallpaperClicks = WallpaperClickGuard()
     }
 
@@ -91,7 +92,10 @@ final class InputBridge: @unchecked Sendable {
         default:
             let isMovement = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged].contains(type)
             let delta = isMovement ? CGVector(dx: event.getDoubleValueField(.mouseEventDeltaX), dy: event.getDoubleValueField(.mouseEventDeltaY)) : .zero
-            let decision = fence.process(location: event.location, rawDelta: delta) { point in self.stageIsTopmost(at: point) }
+            let decision = fence.process(location: event.location, rawDelta: delta, type: type,
+                                         buttonNumber: event.getIntegerValueField(.mouseEventButtonNumber)) { point in
+                self.stageIsTopmost(at: point)
+            }
             let target = decision.location ?? event.location
             let consumed = wallpaperClicks.consumes(type, captured: fence.isCaptured, flags: event.flags) {
                 // Use the mapped virtual point, not the physical stage window under the user's hand.

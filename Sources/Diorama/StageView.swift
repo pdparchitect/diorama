@@ -11,10 +11,17 @@ final class StageNSView: NSView {
     /// Called with the picture's rectangle in global coordinates (top-left origin) and the window number, or `nil` when the
     /// picture is not visible on screen.
     var onGeometryChange: ((CGRect?, Int) -> Void)?
+    /// Release using the old picture mapping before AppKit moves or resizes the window.
+    var onWindowInteraction: (() -> Void)?
+    var virtualDisplayID: CGDirectDisplayID = 0 {
+        didSet { if virtualDisplayID != oldValue { reportGeometry() } }
+    }
+    private var constrainingWindow = false
     // Retain the buffer as well as the IOSurface until the next frame is installed.
     private var displayedFrame: StageFrame?
 
     private static let windowNotifications: [Notification.Name] = [
+        NSWindow.willMoveNotification, NSWindow.willStartLiveResizeNotification, NSWindow.didEndLiveResizeNotification,
         NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.didChangeScreenNotification,
         NSWindow.didChangeOcclusionStateNotification, NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification,
         NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification, NSWindow.willCloseNotification
@@ -66,15 +73,21 @@ final class StageNSView: NSView {
     }
 
     @objc private func environmentChanged(_ notification: Notification) {
-        // The window's frame is not final until the notification has been processed, so report on the next turn of the loop.
+        if notification.name == NSWindow.willMoveNotification || notification.name == NSWindow.willStartLiveResizeNotification {
+            onWindowInteraction?()
+        }
         if notification.name == NSWindow.willCloseNotification {
             onGeometryChange?(nil, window?.windowNumber ?? 0)
         } else {
+            // Enforce placement immediately during a drag, then refresh after AppKit has finalized layout.
+            reportGeometry()
             DispatchQueue.main.async { [weak self] in self?.reportGeometry() }
         }
     }
 
     func reportGeometry() {
+        guard !constrainingWindow else { return }
+        keepWindowOffVirtualDisplay()
         guard let window, window.isVisible, !window.isMiniaturized, window.occlusionState.contains(.visible),
               displayPointSize.width > 0, let primary = NSScreen.screens.first else {
             onGeometryChange?(nil, window?.windowNumber ?? 0)
@@ -85,6 +98,22 @@ final class StageNSView: NSView {
         let stage = StageGeometry.fit(displayPointSize, in: global)
         onGeometryChange?(stage.isEmpty ? nil : stage, window.windowNumber)
     }
+
+    private func keepWindowOffVirtualDisplay() {
+        guard let window, virtualDisplayID != 0 else { return }
+        let screens = NSScreen.screens
+        func displayID(_ screen: NSScreen) -> CGDirectDisplayID? {
+            (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+        }
+        guard let virtualScreen = screens.first(where: { displayID($0) == virtualDisplayID }) else { return }
+        let physicalBounds = screens.filter { displayID($0) != virtualDisplayID }.map(\.visibleFrame)
+        let frame = StageWindowPlacement.constrain(window.frame, virtualBounds: virtualScreen.frame, physicalBounds: physicalBounds)
+        guard frame != window.frame else { return }
+        constrainingWindow = true
+        defer { constrainingWindow = false }
+        onWindowInteraction?()
+        window.setFrame(frame, display: true, animate: false)
+    }
 }
 
 struct StageView: NSViewRepresentable {
@@ -93,6 +122,7 @@ struct StageView: NSViewRepresentable {
     func makeNSView(context: Context) -> StageNSView {
         let view = StageNSView(frame: .zero)
         view.onGeometryChange = { [weak model] stage, windowNumber in model?.stageGeometryChanged(stage: stage, windowNumber: windowNumber) }
+        view.onWindowInteraction = { [weak model] in model?.releasePointer() }
         model.attach(view)
         return view
     }
@@ -104,6 +134,7 @@ struct StageView: NSViewRepresentable {
     static func dismantleNSView(_ view: StageNSView, coordinator: ()) {
         view.onGeometryChange?(nil, view.window?.windowNumber ?? 0)
         view.onGeometryChange = nil
+        view.onWindowInteraction = nil
         view.clear()
     }
 }

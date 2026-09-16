@@ -132,6 +132,7 @@ final class DioramaModel {
 
     func attach(_ view: StageNSView) {
         stageView = view
+        view.virtualDisplayID = display.displayID
         view.displayPointSize = displayPointSize
     }
 
@@ -209,6 +210,7 @@ final class DioramaModel {
     }
 
     private func pushFence() {
+        stageView?.virtualDisplayID = display.displayID
         let geometry: StageGeometry? = if let stageRect, !displayBounds.isEmpty { StageGeometry(stage: stageRect, display: displayBounds) } else { nil }
         bridge.stageWindowNumber = stageWindowNumber
         bridge.update(geometry: geometry, virtualBounds: displayBounds.isEmpty ? nil : displayBounds, physicalBounds: display.otherDisplayBounds(), interactive: interactive && streaming && accessibilityGranted && screenRecordingGranted)
