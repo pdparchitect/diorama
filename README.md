@@ -1,18 +1,35 @@
-<p align="center"><img src="Support/AppIcon.png" width="200" alt="Diorama application icon"></p>
+<div align="center">
+
+<img src="Support/AppIcon.png" alt="Diorama" width="88">
 
 # Diorama
 
-A desktop in a box.
+**A desktop in a box.**
 
-[Download](https://github.com/pdparchitect/diorama/releases) · [Documentation](docs/README.md) · [Development](docs/development.md)
+<p>
+  <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-%E2%89%A515-0a0a0a?style=flat-square&logo=apple&logoColor=white">
+  <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-0a0a0a?style=flat-square&logo=swift&logoColor=white">
+  <img alt="Apple Silicon" src="https://img.shields.io/badge/Apple-Silicon-0a0a0a?style=flat-square">
+  <img alt="Retina screenshots" src="https://img.shields.io/badge/screenshots-Retina-0a0a0a?style=flat-square">
+</p>
 
-Keep a complete Mac desktop inside one window. Arrange apps on its virtual display, work with them directly, and capture clean Retina screenshots without rearranging your own desktop.
+[Download](#download) · [Documentation](docs/README.md) · [Development](docs/development.md) · [Security](docs/security.md)
 
-<img width="1656" height="1242" alt="Xnapper-2026-09-16-11 49 19" src="https://github.com/user-attachments/assets/4980e638-3788-4a44-bed9-79213b4f4937" />
+</div>
+
+<p align="center">
+  <img width="100%" alt="A Mac desktop running inside Diorama" src="https://github.com/user-attachments/assets/4980e638-3788-4a44-bed9-79213b4f4937" />
+</p>
+
+Keep a complete Mac desktop inside one window. Arrange apps on its virtual display,
+work with them directly, and capture clean Retina screenshots without rearranging
+your own desktop.
 
 ## Download
 
-Requires macOS 15 or later on Apple Silicon. Download `Diorama-arm64.zip` from [Releases](https://github.com/pdparchitect/diorama/releases), unzip it, and move Diorama to Applications.
+**[Download Diorama](https://github.com/pdparchitect/diorama/releases/latest)** for macOS 15 or later on Apple Silicon.
+
+Download `Diorama-arm64.zip`, unzip it, and move Diorama to **Applications**.
 
 Release builds support **Diorama → Check for Updates…**. Automatic checks and installation preferences are in Settings. To build from source, see [Development](docs/development.md).
 
@@ -32,4 +49,5 @@ Screenshots are saved in `~/Pictures/Diorama`. Closing the stage quits Diorama a
 - [Development and testing](docs/development.md)
 - [Architecture](docs/architecture.md)
 - [Downloads and updates](docs/releases.md)
+- [All documentation](docs/README.md)
 - [Changelog](CHANGELOG.md)
