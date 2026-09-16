@@ -95,8 +95,7 @@ final class InputBridge: @unchecked Sendable {
             let target = decision.location ?? event.location
             let consumed = wallpaperClicks.consumes(type, captured: fence.isCaptured, flags: event.flags) {
                 // Use the mapped virtual point, not the physical stage window under the user's hand.
-                // AppKit's mouse-down hit test returns zero for empty wallpaper, including Finder's desktop background.
-                self.windowNumber(at: target) == 0
+                self.targetIsWallpaper(at: target)
             }
             apply(decision, to: event, delivered: !consumed)
             return consumed ? nil : Unmanaged.passUnretained(event)
@@ -125,6 +124,17 @@ final class InputBridge: @unchecked Sendable {
         let windowNumber = stageWindowNumber
         guard windowNumber != 0 else { return false }
         return self.windowNumber(at: point) == windowNumber
+    }
+
+    private func targetIsWallpaper(at point: CGPoint) -> Bool {
+        let number = windowNumber(at: point)
+        var layer: CGWindowLevel?
+        if let number, number > 0, let identifier = CGWindowID(exactly: number) {
+            // Query only the hit window, and only on primary down, to keep movement events out of window enumeration.
+            let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, identifier) as? [[String: Any]]
+            layer = (info?.first?[kCGWindowLayer as String] as? NSNumber)?.int32Value
+        }
+        return WallpaperClickGuard.isWallpaper(windowNumber: number, windowLayer: layer)
     }
 
     private func windowNumber(at point: CGPoint) -> Int? {

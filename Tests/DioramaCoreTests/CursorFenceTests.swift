@@ -97,6 +97,83 @@ final class CursorFenceTests: XCTestCase {
         XCTAssertFalse(fence.isCaptured)
     }
 
+    func testCornerExitsPreserveBothAxesAndOvershoot() {
+        for dx: CGFloat in [-30, 30] {
+            for dy: CGFloat in [-25, 25] {
+                var fence = makeFence()
+                let start = CGPoint(x: dx < 0 ? stage.minX + 10 : stage.maxX - 10,
+                                    y: dy < 0 ? stage.minY + 10 : stage.maxY - 10)
+                _ = move(&fence, to: start)
+                let pinned = CGPoint(x: dx < 0 ? virtual.minX : virtual.maxX - 1,
+                                     y: dy < 0 ? virtual.minY : virtual.maxY - 1)
+                let decision = move(&fence, to: pinned, delta: CGVector(dx: dx, dy: dy))
+                let expected = CGPoint(x: start.x + dx, y: start.y + dy)
+                XCTAssertEqual(decision.transition, .exited)
+                XCTAssertEqual(decision.location, expected)
+                XCTAssertEqual(decision.warp, expected)
+            }
+        }
+    }
+
+    func testDisplayBoundaryDoesNotTurnRelocationIntoHandMovement() {
+        var fence = makeFence()
+        _ = move(&fence, to: CGPoint(x: 210, y: 310))
+        // The location is on a different display, but the hand only moved a few points diagonally.
+        let decision = move(&fence, to: .zero, delta: CGVector(dx: -15, dy: -20))
+        XCTAssertEqual(decision.transition, .exited)
+        XCTAssertEqual(decision.location, CGPoint(x: 195, y: 290))
+        XCTAssertEqual(decision.warp, CGPoint(x: 195, y: 290))
+    }
+
+    func testQueuedVirtualEventsAfterExitContinueFromTheWindow() {
+        var fence = makeFence()
+        _ = move(&fence, to: CGPoint(x: 210, y: 570))
+        _ = move(&fence, to: CGPoint(x: 1733, y: 540), delta: CGVector(dx: -15, dy: 0))
+
+        // These events were positioned before the release warp took effect.
+        let first = move(&fence, to: CGPoint(x: 1730, y: 542), delta: CGVector(dx: -3, dy: 2))
+        XCTAssertEqual(first.location, CGPoint(x: 192, y: 572))
+        XCTAssertEqual(first.warp, CGPoint(x: 192, y: 572))
+        XCTAssertNil(first.transition)
+        let second = move(&fence, to: CGPoint(x: 1728, y: 544), delta: CGVector(dx: -2, dy: 2))
+        XCTAssertEqual(second.location, CGPoint(x: 190, y: 574))
+        XCTAssertFalse(fence.isCaptured)
+
+        // Once events report physical coordinates again, normal movement and fencing resume.
+        XCTAssertEqual(move(&fence, to: CGPoint(x: 188, y: 576), delta: CGVector(dx: -2, dy: 2)), .passthrough)
+        XCTAssertEqual(move(&fence, to: CGPoint(x: 1740, y: 500)).warp, CGPoint(x: 1727, y: 500))
+    }
+
+    func testQueuedClickAfterExplicitReleaseStaysAtTheReleasePoint() {
+        var fence = makeFence()
+        _ = move(&fence, to: CGPoint(x: 680, y: 570))
+        _ = fence.release()
+        let decision = move(&fence, to: CGPoint(x: 2688, y: 540))
+        XCTAssertEqual(decision.location, CGPoint(x: 680, y: 570))
+        XCTAssertEqual(decision.warp, CGPoint(x: 680, y: 570))
+        XCTAssertNil(decision.transition)
+        XCTAssertFalse(fence.isCaptured)
+        XCTAssertFalse(fence.armed)
+    }
+
+    func testReleaseHandoffWorksWithVirtualDisplayOnEitherSideOrAboveOrBelow() {
+        for origin in [CGPoint(x: -1920, y: 0), CGPoint(x: 1728, y: 0),
+                       CGPoint(x: 0, y: -1080), CGPoint(x: 0, y: 1117)] {
+            var fence = makeFence()
+            let display = CGRect(origin: origin, size: virtual.size)
+            let geometry = StageGeometry(stage: stage, display: display)
+            fence.geometry = geometry
+            fence.virtualBounds = display
+            _ = move(&fence, to: CGPoint(x: 210, y: 570))
+            let target = geometry.toDisplay(CGPoint(x: 210, y: 570))
+            let exit = move(&fence, to: CGPoint(x: target.x - 15, y: target.y), delta: CGVector(dx: -15, dy: 0))
+            XCTAssertEqual(exit.location, CGPoint(x: 195, y: 570))
+            let queued = move(&fence, to: CGPoint(x: target.x - 18, y: target.y), delta: CGVector(dx: -3, dy: 0))
+            XCTAssertEqual(queued.location, CGPoint(x: 192, y: 570))
+            XCTAssertNil(queued.transition)
+        }
+    }
+
     func testReleaseRequiresLeavingTheStageBeforeRecapturing() {
         var fence = makeFence()
         _ = move(&fence, to: CGPoint(x: 210, y: 570))

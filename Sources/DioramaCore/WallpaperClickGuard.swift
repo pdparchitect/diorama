@@ -7,6 +7,15 @@ public struct WallpaperClickGuard: Sendable {
 
     public init() {}
 
+    /// AppKit can hit Finder's desktop window rather than report empty wallpaper. Its desktop layer distinguishes it
+    /// from ordinary Finder windows; widgets, the Dock, menus, and application windows sit above the desktop layers.
+    public static func isWallpaper(windowNumber: Int?, windowLayer: CGWindowLevel?) -> Bool {
+        guard let windowNumber else { return false }
+        if windowNumber == 0 { return true }
+        guard let windowLayer else { return false }
+        return windowLayer <= CGWindowLevelForKey(.desktopIconWindow)
+    }
+
     public mutating func consumes(_ type: CGEventType, captured: Bool, flags: CGEventFlags = [], targetIsWallpaper: () -> Bool) -> Bool {
         switch type {
         case .leftMouseDown:

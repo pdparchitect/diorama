@@ -52,6 +52,13 @@ public struct CursorFence: Sendable, Equatable {
     /// stage edge does not immediately re-capture.
     public private(set) var armed = true
 
+    private struct ReleaseHandoff: Sendable, Equatable {
+        var point: CGPoint
+        let display: CGRect
+    }
+    /// Events already queued at release may still use virtual coordinates until the warp reaches WindowServer.
+    private var releaseHandoff: ReleaseHandoff?
+
     public init() {}
 
     public var isCaptured: Bool {
@@ -62,12 +69,13 @@ public struct CursorFence: Sendable, Equatable {
     /// Processes one pointer event.
     /// - Parameters:
     ///   - location: the event location in global coordinates.
-    ///   - rawDelta: the hardware movement reported by the event; only its direction is used, to detect pushing against an edge.
+    ///   - rawDelta: relative movement reported by a move/drag event, or zero for clicks and scrolling. Used when display
+    ///     boundaries or a pending release warp make absolute coordinates unreliable.
     ///   - stageHit: whether the stage window is the topmost window at a point on the physical screen.
     public mutating func process(location: CGPoint, rawDelta: CGVector, stageHit: (CGPoint) -> Bool) -> Decision {
         switch mode {
         case .free:
-            return processFree(location: location, stageHit: stageHit)
+            return processFree(location: location, rawDelta: rawDelta, stageHit: stageHit)
         case .captured(let shadow, let target):
             return processCaptured(location: location, rawDelta: rawDelta, shadow: shadow, target: target, stageHit: stageHit)
         }
@@ -76,13 +84,26 @@ public struct CursorFence: Sendable, Equatable {
     /// Forces the pointer back onto the physical screen, for example when interaction is switched off or the stage window closes.
     public mutating func release() -> Decision? {
         guard case .captured(let shadow, _) = mode else { return nil }
+        return finishRelease(at: shadow)
+    }
+
+    private mutating func finishRelease(at shadow: CGPoint) -> Decision {
         mode = .free
         armed = false
         let point = Clamp.point(shadow, intoAnyOf: physicalBounds)
+        releaseHandoff = (geometry?.display ?? virtualBounds).map { ReleaseHandoff(point: point, display: $0) }
         return Decision(location: point, warp: point, transition: .exited)
     }
 
-    private mutating func processFree(location: CGPoint, stageHit: (CGPoint) -> Bool) -> Decision {
+    private mutating func processFree(location: CGPoint, rawDelta: CGVector, stageHit: (CGPoint) -> Bool) -> Decision {
+        if var handoff = releaseHandoff, handoff.display.contains(location) {
+            // Continue from the window's exit point, not the physical screen nearest the stale virtual location.
+            handoff.point = Clamp.point(CGPoint(x: handoff.point.x + rawDelta.dx, y: handoff.point.y + rawDelta.dy), intoAnyOf: physicalBounds)
+            releaseHandoff = handoff
+            if geometry?.stage.contains(handoff.point) != true { armed = true }
+            return Decision(location: handoff.point, warp: handoff.point)
+        }
+        releaseHandoff = nil
         if let virtualBounds, virtualBounds.contains(location), !physicalBounds.isEmpty {
             let clamped = Clamp.point(location, intoAnyOf: physicalBounds)
             return Decision(location: clamped, warp: clamped)
@@ -98,16 +119,22 @@ public struct CursorFence: Sendable, Equatable {
     }
 
     private mutating func processCaptured(location: CGPoint, rawDelta: CGVector, shadow: CGPoint, target: CGPoint, stageHit: (CGPoint) -> Bool) -> Decision {
-        // The cursor was placed at `target`; whatever offset it has now is the hardware movement since then.
-        var shadow = CGPoint(x: shadow.x + (location.x - target.x), y: shadow.y + (location.y - target.y))
+        var movement = CGVector(dx: location.x - target.x, dy: location.y - target.y)
         var push = CGVector.zero
         if let geometry {
             let display = geometry.display
+            // At a display boundary, macOS can clip or relocate the absolute position. Relative motion retains both
+            // axes of a diagonal move and its overshoot instead of mistaking a display jump for hand movement.
+            if location.x <= display.minX || location.x >= display.maxX - 1 ||
+                location.y <= display.minY || location.y >= display.maxY - 1 {
+                movement = rawDelta
+            }
             if location.x <= display.minX, rawDelta.dx < 0 { push.dx = -1 }
             if location.x >= display.maxX - 1, rawDelta.dx > 0 { push.dx = 1 }
             if location.y <= display.minY, rawDelta.dy < 0 { push.dy = -1 }
             if location.y >= display.maxY - 1, rawDelta.dy > 0 { push.dy = 1 }
         }
+        var shadow = CGPoint(x: shadow.x + movement.dx, y: shadow.y + movement.dy)
         let pushing = push != .zero
         if interactive, !pushing, let geometry, geometry.stage.contains(shadow), stageHit(shadow) {
             let newTarget = geometry.toDisplay(shadow)
@@ -115,15 +142,12 @@ public struct CursorFence: Sendable, Equatable {
             return Decision(location: newTarget, warp: newTarget)
         }
         if pushing, let geometry {
-            // Step just outside the stage in the direction of the push so the pointer reappears beside the picture.
-            if push.dx < 0 { shadow.x = geometry.stage.minX - 1 }
-            if push.dx > 0 { shadow.x = geometry.stage.maxX + 1 }
-            if push.dy < 0 { shadow.y = geometry.stage.minY - 1 }
-            if push.dy > 0 { shadow.y = geometry.stage.maxY + 1 }
+            // Step outside if still pinned inside the picture, preserving any movement already beyond its edge.
+            if push.dx < 0 { shadow.x = min(shadow.x, geometry.stage.minX - 1) }
+            if push.dx > 0 { shadow.x = max(shadow.x, geometry.stage.maxX + 1) }
+            if push.dy < 0 { shadow.y = min(shadow.y, geometry.stage.minY - 1) }
+            if push.dy > 0 { shadow.y = max(shadow.y, geometry.stage.maxY + 1) }
         }
-        mode = .free
-        armed = false
-        let point = Clamp.point(shadow, intoAnyOf: physicalBounds)
-        return Decision(location: point, warp: point, transition: .exited)
+        return finishRelease(at: shadow)
     }
 }
