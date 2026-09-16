@@ -1,34 +1,35 @@
 import AppKit
-import SwiftUI
+import Observation
 import DioramaCore
 
 /// Coordinates the virtual display, the capture stream, the pointer bridge and the window actions behind the stage window.
 @MainActor
-final class DioramaModel: ObservableObject {
-    @Published private(set) var status = "Set up Diorama to begin."
-    @Published private(set) var captured = false
-    @Published private(set) var streaming = false
-    @Published private(set) var accessibilityGranted = false
-    @Published private(set) var screenRecordingGranted = false
-    @Published private(set) var displayBounds = CGRect.zero
-    @Published private(set) var displayPointSize = StageResolution.default.pointSize
-    @Published private(set) var lastScreenshot: URL?
-    @Published private(set) var displayError: String?
-    @Published private(set) var captureError: String?
-    @Published private(set) var inputError: String?
+@Observable
+final class DioramaModel {
+    private(set) var status = "Set up Diorama to begin."
+    private(set) var captured = false
+    private(set) var streaming = false
+    private(set) var accessibilityGranted = false
+    private(set) var screenRecordingGranted = false
+    private(set) var displayBounds = CGRect.zero
+    private(set) var displayPointSize = StageResolution.default.pointSize
+    private(set) var lastScreenshot: URL?
+    private(set) var displayError: String?
+    private(set) var captureError: String?
+    private(set) var inputError: String?
 
-    @Published var interactive = true {
+    var interactive = true {
         didSet {
-            UserDefaults.standard.set(interactive, forKey: Self.interactiveKey)
+            defaults.set(interactive, forKey: Self.interactiveKey)
             pushFence()
             updateReadyStatus()
         }
     }
 
-    @Published var resolution: StageResolution {
+    var resolution: StageResolution {
         didSet {
             guard resolution != oldValue else { return }
-            UserDefaults.standard.set(resolution.id, forKey: Self.resolutionKey)
+            defaults.set(resolution.id, forKey: Self.resolutionKey)
             if display.exists, !display.apply(resolution) { status = "That resolution is not available on the virtual display." }
         }
     }
@@ -36,6 +37,7 @@ final class DioramaModel: ObservableObject {
     private static let interactiveKey = "Interactive"
     private static let resolutionKey = "Resolution"
 
+    private let defaults: UserDefaults
     private let display = VirtualDisplayController()
     private let stream = StageStream()
     private let bridge = InputBridge()
@@ -52,9 +54,9 @@ final class DioramaModel: ObservableObject {
     private var previousApplication: NSRunningApplication?
     private var started = false
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         previousApplication = NSWorkspace.shared.frontmostApplication
-        let defaults = UserDefaults.standard
         interactive = defaults.object(forKey: Self.interactiveKey) as? Bool ?? true
         resolution = defaults.string(forKey: Self.resolutionKey).flatMap(StageResolution.named) ?? .default
         accessibilityGranted = Permissions.accessibility

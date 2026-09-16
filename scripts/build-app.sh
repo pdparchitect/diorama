@@ -28,8 +28,9 @@ if [[ "$release" == 1 ]]; then timestamp_option=--timestamp; fi
 export CLANG_MODULE_CACHE_PATH="$project_root/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 mkdir -p "$CLANG_MODULE_CACHE_PATH"
-swift build --package-path "$project_root" --configuration "$configuration" >&2
-bin_path="$(swift build --package-path "$project_root" --configuration "$configuration" --show-bin-path)"
+zsh "$project_root/scripts/swift.sh" build --package-path "$project_root" --configuration "$configuration" >&2
+bin_path="$(zsh "$project_root/scripts/swift.sh" build --package-path "$project_root" --configuration "$configuration" --show-bin-path)"
+python3 "$project_root/scripts/verify-build-sdk.py" "$bin_path/Diorama" "$(xcrun --sdk macosx --show-sdk-version)" >&2
 output="$project_root/dist/Diorama.app"
 mkdir -p "$project_root/dist"
 staging="$(mktemp -d "$project_root/dist/.diorama-build.XXXXXX")"
@@ -41,6 +42,7 @@ ditto "$project_root/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-
 # Diorama is unsandboxed and does not use either Sparkle XPC service.
 rm -rf "$sparkle/Versions/B/XPCServices" "$sparkle/XPCServices"
 cp "$project_root/.build/checkouts/Sparkle/LICENSE" "$app/Contents/Resources/Sparkle-LICENSE.txt"
+cp "$project_root/Support/Noodle-LICENSE.txt" "$app/Contents/Resources/Noodle-LICENSE.txt"
 cp "$bin_path/Diorama" "$app/Contents/MacOS/Diorama"
 # Recent Swift toolchains add a development-only fallback runtime path. Keep only OS/bundle paths.
 python3 - "$app/Contents/MacOS/Diorama" <<'PY'

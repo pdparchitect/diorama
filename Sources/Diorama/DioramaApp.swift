@@ -5,26 +5,38 @@ import DioramaCore
 @main
 struct DioramaApp: App {
     @NSApplicationDelegateAdaptor(DioramaApplicationDelegate.self) private var appDelegate
-    @StateObject private var model = DioramaModel()
+    @State private var model = DioramaModel()
 
     var body: some Scene {
         Window("Diorama", id: "stage") {
             StageWindow(model: model)
+                .preferredColorScheme(.dark)
                 .onAppear { model.start() }
                 .onDisappear { NSApp.terminate(nil) }
         }
         .defaultSize(width: 1120, height: 690)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             StageCommands(model: model)
-            CommandGroup(after: .appInfo) { CheckForUpdatesButton() }
+            CommandGroup(after: .appSettings) { CheckForUpdatesButton() }
+            CommandGroup(replacing: .help) {
+                Button("Diorama Help") {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/pdparchitect/diorama")!)
+                }
+            }
         }
 
-        Settings { UpdatesSettingsView() }
+        Settings {
+            DioramaSettingsView(model: model)
+                .preferredColorScheme(.dark)
+        }
+        .windowResizability(.contentSize)
     }
 }
 
 struct StageCommands: Commands {
-    @ObservedObject var model: DioramaModel
+    @Bindable var model: DioramaModel
 
     var body: some Commands {
         CommandMenu("Stage") {

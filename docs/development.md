@@ -50,4 +50,8 @@ Automated tests do not validate WindowServer behavior. The private CoreGraphics 
 
 `Support/AppIcon.png` is the transparent icon master. `make icon` uses `sips` and `iconutil` to regenerate the committed `Support/Diorama.icns`; normal builds need no image service. Build outputs, temporary release files, and Python caches are ignored.
 
+Settings follow Noodle's native tab layout and fitted window sizing, with a consistent flat toolbar background. The desktop model uses property-level Observation so background capture and permission polling do not rebuild the settings tab container. Regression tests cover unrelated updates, unchanged values, and preference bindings. `SettingsScrollIndicators.swift` adapts Noodle's macOS 27 resize workaround locally, with the Apache-2.0 license in `Support/Noodle-LICENSE.txt` also included in the app bundle.
+
+Builds and tests use `scripts/swift.sh` to pass the selected Xcode SDK consistently to SwiftPM and the linker. Packaging verifies the executable's linked SDK matches Xcode; an incorrect SDK stamp selects legacy SwiftUI styling and settings behavior even on a newer macOS.
+
 [Documentation](README.md)

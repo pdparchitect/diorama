@@ -74,16 +74,12 @@ struct UpdatesSettingsView: View {
                     get: { updater.automaticallyDownloads }, set: updater.setAutomaticDownloads
                 ))
                 .disabled(!updater.allowsAutomaticUpdates)
-            } footer: {
-                Text(AppUpdater.updatesEnabled
-                     ? "Installing an update restarts Diorama and returns the stage’s windows to your desktop."
-                     : "Updates are available in distributed releases.")
             }
             .disabled(!AppUpdater.updatesEnabled)
+            .help(AppUpdater.updatesEnabled
+                  ? "Installing an update restarts Diorama and returns the stage’s windows to your desktop."
+                  : "Updates are available in distributed releases.")
         }
         .formStyle(.grouped)
-        .frame(width: 420)
-        .fixedSize(horizontal: false, vertical: true)
-        .navigationTitle("Updates")
     }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 import DioramaCore
 
 struct StageWindow: View {
-    @ObservedObject var model: DioramaModel
+    @Bindable var model: DioramaModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +18,7 @@ struct StageWindow: View {
             statusBar
         }
         .frame(minWidth: 640, minHeight: 520)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItemGroup {
                 Toggle(isOn: $model.interactive) {

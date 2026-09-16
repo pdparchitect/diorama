@@ -13,7 +13,7 @@ Both permissions are required before the display starts. Revoking either stops c
 
 The stage is a real virtual display in your current macOS login session, with its own wallpaper, menu bar, Spaces, and resolution. The pointer is fenced off its desktop edge on your physical screens. Move into the stage's picture to interact: clicks, dragging, scrolling, and typing go to its windows. Move out, push against the picture's edge, or choose **Stage → Release Pointer** to return.
 
-Use **Stage → Interactive** to switch to a view-only stage. A plain left-click on empty wallpaper is ignored so macOS's **Click wallpaper to reveal desktop** action does not sweep windows away across all displays. App windows, menus, the Dock, and desktop context clicks remain interactive. Diorama does not change your global desktop settings.
+Use the toolbar's **Interactive** control, **Stage → Interactive**, or ⌃⌥⌘I to switch between interactive and view-only modes as you work. A plain left-click on empty wallpaper is ignored so macOS's **Click wallpaper to reveal desktop** action does not sweep windows away across all displays. App windows, menus, the Dock, and desktop context clicks remain interactive. Diorama does not change your global desktop settings.
 
 The toolbar and Stage menu target the last active application when Diorama is frontmost. Closing the stage quits the app and removes the virtual display; macOS moves its windows to a remaining display. Capture failures release the pointer and offer **Try Again**. Diorama also retries after five seconds.
 
@@ -35,6 +35,12 @@ The five Control-Option-Command shortcuts work globally while Diorama has Access
 The camera button saves a full-resolution PNG of the virtual desktop, including its wallpaper, menu bar, and windows, without the cursor. Files go to `~/Pictures/Diorama` and open in Preview for copying, cropping, or annotation. Repeated captures get numeric suffixes so existing images are preserved. If Preview cannot open, Finder reveals the saved image. **Stage → Copy Screenshot** captures directly to the clipboard.
 
 **Stage → Resolution** offers Retina sizes from 1024 × 576 to 1920 × 1080 points, backed by 2048 × 1152 to 3840 × 2160 pixels. The default is 1920 × 1080 points. macOS's screen-sharing indicator is system UI; full-desktop captures retain the menu bar.
+
+## Settings and help
+
+Open **Diorama → Settings…** (⌘,) to adjust resolution in **General**, review access in **Permissions**, or configure updates in **Update**. The resolution preference is shared with the Stage menu. The window fits each tab's content automatically.
+
+**Help → Diorama Help** opens the [GitHub project page](https://github.com/pdparchitect/diorama).
 
 ## Updates
 

@@ -88,7 +88,7 @@ final class StageNSView: NSView {
 }
 
 struct StageView: NSViewRepresentable {
-    @ObservedObject var model: DioramaModel
+    @Bindable var model: DioramaModel
 
     func makeNSView(context: Context) -> StageNSView {
         let view = StageNSView(frame: .zero)
